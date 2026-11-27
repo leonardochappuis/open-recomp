@@ -2,6 +2,7 @@ name: orc sweep
 
 # Hourly: remind owners of attempts whose lease is nearly over, label expired
 # attempts, close attempts whose grace period ended. See docs/DESIGN.md.
+# Manual run: Actions > orc sweep > Run workflow (optionally as a dry run).
 
 on:
   schedule:

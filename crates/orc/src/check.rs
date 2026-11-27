@@ -95,7 +95,9 @@ fn last_progress(repo: &str, a: &Attempt) -> Option<String> {
         .ok()?;
     let c = v.as_array()?.first()?;
     let when = c["created_at"].as_str().unwrap_or_default().get(..10).unwrap_or_default().to_string();
-    Some(format!("{when}: {}", short(c["body"].as_str()?, 280)))
+    let body = c["body"].as_str()?;
+    let body = body.strip_prefix("**Progress:** ").unwrap_or(body);
+    Some(format!("{when}: {}", short(body, 280)))
 }
 
 fn hw_line(theirs: Option<&Hw>, mine: &Hw) -> (HwMatch, String) {
@@ -124,6 +126,7 @@ pub fn check(ctx: &Ctx, text: &str, scope_path: Option<&str>) -> Result<String> 
         Ok(repo) => attempts::list(repo).map(|a| (repo.to_string(), a)).ok(),
         Err(_) => None,
     };
+    let me = crate::publish::login(ctx).ok();
     let mut same = Vec::new();
     let mut different = Vec::new();
     if let Some((repo, all)) = &attempts {
@@ -135,7 +138,8 @@ pub fn check(ctx: &Ctx, text: &str, scope_path: Option<&str>) -> Result<String> 
             for c in &ranked {
                 let a = c.attempt;
                 let (m, hw) = hw_line(a.meta.hw.as_ref(), &mine);
-                let who = format!("@{} in #{}", a.author, a.number);
+                let you = me.as_deref().is_some_and(|m| m.eq_ignore_ascii_case(&a.author));
+                let who = format!("@{}{} in #{}", a.author, if you { " (you)" } else { "" }, a.number);
                 if m == HwMatch::DifferentGpu {
                     different.push(who)
                 } else {

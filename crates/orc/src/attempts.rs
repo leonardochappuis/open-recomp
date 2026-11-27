@@ -5,7 +5,7 @@
 use crate::gh;
 use crate::state::LocalState;
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, SubsecRound, Utc};
 use orc_kb::Policy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -247,7 +247,7 @@ pub fn open(repo: &str, policy: &Policy, a: OpenArgs) -> Result<Attempt> {
         owner: owner.clone(),
         env: a.env.map(|e| e.fingerprint()),
         lease_hours: hours,
-        lease_expires: Utc::now() + Duration::hours(i64::from(hours)),
+        lease_expires: lease_end(hours),
         state: State::Active,
         reminded: false,
         problem: a.problem_issue,
@@ -308,7 +308,7 @@ pub fn renew(repo: &str, number: u64, policy: &Policy, hours: Option<u32>) -> Re
     let mut m = a.meta.clone();
     let hours = policy.lease_hours(hours.or(Some(m.lease_hours)));
     m.lease_hours = hours;
-    m.lease_expires = Utc::now() + Duration::hours(i64::from(hours));
+    m.lease_expires = lease_end(hours);
     m.state = State::Active;
     m.reminded = false;
     save(repo, &a, &m)?;
@@ -325,7 +325,7 @@ pub fn pause(repo: &str, number: u64, policy: &Policy) -> Result<Meta> {
     let mut m = a.meta.clone();
     m.state = State::Paused;
     m.lease_hours = policy.attempts.paused_lease_hours;
-    m.lease_expires = Utc::now() + Duration::hours(i64::from(m.lease_hours));
+    m.lease_expires = lease_end(m.lease_hours);
     m.reminded = false;
     save(repo, &a, &m)?;
     LocalState::update(|s| s.untrack(repo, number))?;
@@ -414,7 +414,7 @@ pub fn sweep(repo: &str, policy: &Policy, dry_run: bool) -> Result<Vec<String>> 
         match action {
             Sweep::Nothing => {}
             Sweep::Clamp => {
-                m.lease_expires = now + Duration::hours(i64::from(policy.attempts.lease_max_hours));
+                m.lease_expires = lease_end(policy.attempts.lease_max_hours);
                 save(repo, &a, &m)?;
             }
             Sweep::Remind => {
@@ -457,6 +457,11 @@ pub fn sweep(repo: &str, policy: &Policy, dry_run: bool) -> Result<Vec<String>> 
         }
     }
     Ok(log)
+}
+
+/// Lease end `hours` from now, whole seconds.
+fn lease_end(hours: u32) -> DateTime<Utc> {
+    (Utc::now() + Duration::hours(i64::from(hours))).trunc_subsecs(0)
 }
 
 fn one_line(s: &str, max: usize) -> String {
