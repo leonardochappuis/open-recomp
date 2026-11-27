@@ -98,6 +98,7 @@ pub struct Attempt {
     pub author: String,
     pub meta: Meta,
     pub comments: u64,
+    pub created_at: String,
     pub updated_at: String,
     #[serde(skip)]
     pub body: String,
@@ -203,7 +204,7 @@ pub fn replace_meta(body: &str, m: &Meta) -> String {
         + "\n"
 }
 
-fn from_issue(v: &Value) -> Option<Attempt> {
+pub fn from_issue(v: &Value) -> Option<Attempt> {
     let body = v["body"].as_str().unwrap_or_default().to_string();
     let meta = parse_meta(&body)?;
     Some(Attempt {
@@ -213,6 +214,7 @@ fn from_issue(v: &Value) -> Option<Attempt> {
         author: v["user"]["login"].as_str()?.to_string(),
         meta,
         comments: v["comments"].as_u64().unwrap_or(0),
+        created_at: v["created_at"].as_str().unwrap_or_default().to_string(),
         updated_at: v["updated_at"].as_str().unwrap_or_default().to_string(),
         body,
     })

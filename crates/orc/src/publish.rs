@@ -9,8 +9,8 @@ use chrono::{SecondsFormat, Utc};
 use orc_env::Environment;
 use orc_kb::validate::{check_change, Report};
 use orc_kb::{
-    finding, Author, Dispute, Evidence, FileSource, Finding, FsSource, Kb, Kind, ReproResult, Reproduction, Status,
-    ENVS_DIR, FINDINGS_DIR,
+    finding, Author, Dispute, Evidence, FileSource, Finding, FsSource, Game, Kb, Kind, ReproResult, Reproduction,
+    Status, ENVS_DIR, FINDINGS_DIR,
 };
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -169,6 +169,27 @@ fn write(
     title: &str,
     pr_body: &str,
 ) -> Result<Published> {
+    let files = files.into_iter().map(|(k, v)| (k, v.into_bytes())).collect();
+    let primary = format!("{FINDINGS_DIR}/{}.md", f.id);
+    let marker = format!("<!-- orc:finding {} -->", f.id);
+    let (location, needs_human) = write_files(ctx, base, who, &f.id, &primary, files, title, pr_body, &marker)?;
+    Ok(Published { id: f.id.clone(), status: f.status, location, needs_human })
+}
+
+/// Validate, then write files locally or open a pull request. Returns where it
+/// went and what needs a human.
+#[allow(clippy::too_many_arguments)]
+fn write_files(
+    ctx: &Ctx,
+    base: &Kb,
+    who: &str,
+    key: &str,
+    primary: &str,
+    files: BTreeMap<String, Vec<u8>>,
+    title: &str,
+    pr_body: &str,
+    marker: &str,
+) -> Result<(String, Vec<String>)> {
     let overlay = Overlay { base: FsSource::new(ctx.kb_root()), files: &files };
     let head = Kb::load(&overlay);
     let paths: Vec<String> = files.keys().cloned().collect();
@@ -178,26 +199,55 @@ fn write(
     }
     let location = match &ctx.mode {
         Mode::Local { root } => {
-            for (p, text) in &files {
+            for (p, data) in &files {
                 let full = root.join(p);
                 std::fs::create_dir_all(full.parent().expect("has parent"))?;
-                std::fs::write(&full, text)?;
+                std::fs::write(&full, data)?;
             }
-            root.join(format!("{FINDINGS_DIR}/{}.md", f.id)).display().to_string()
+            root.join(primary).display().to_string()
         }
         Mode::GitHub { repo, clone } => {
-            let branch = format!("orc/{}-{}", f.id, Utc::now().format("%Y%m%d%H%M%S"));
-            let body = format!("{pr_body}\n\n<!-- orc:finding {} -->\n_Opened by orc._", f.id);
+            let slug: String =
+                key.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' }).collect();
+            let branch = format!("orc/{slug}-{}", Utc::now().format("%Y%m%d%H%M%S"));
+            let body = format!("{pr_body}\n\n{marker}\n_Opened by orc._");
             open_pr(ctx, repo, clone, &branch, &files, title, &body)?
         }
     };
-    Ok(Published { id: f.id.clone(), status: f.status, location, needs_human: report.needs_human })
+    Ok((location, report.needs_human))
+}
+
+/// Add or update a game in the catalog. `cover_file` is a local image copied
+/// into `kb/games/covers/`.
+pub fn save_game(ctx: &Ctx, mut game: Game, cover_file: Option<&Path>) -> Result<(String, Vec<String>)> {
+    let kb = ctx.kb()?;
+    let who = login(ctx)?;
+    let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    if let Some(src) = cover_file {
+        let ext = src.extension().and_then(|e| e.to_str()).unwrap_or_default().to_ascii_lowercase();
+        if !["png", "jpg", "jpeg", "webp"].contains(&ext.as_str()) {
+            bail!("cover must be a .png, .jpg or .webp file");
+        }
+        let data = std::fs::read(src).with_context(|| format!("reading {}", src.display()))?;
+        if data.len() > 1024 * 1024 {
+            bail!("cover must be at most 1 MiB");
+        }
+        let path = format!("{}/{}-{}.{ext}", orc_kb::game::COVERS_DIR, game.platform, game.id.to_lowercase());
+        files.insert(path.clone(), data);
+        game.cover = Some(path);
+    }
+    let path = game.path();
+    files.insert(path.clone(), game.render().into_bytes());
+    let title = format!("game: {} ({})", game.name, game.platform);
+    let body = format!("Catalog entry for **{}** (`{}`), status {:?}.", game.name, game.scope(), game.status);
+    let key = format!("game-{}-{}", game.platform, game.id.to_lowercase());
+    write_files(ctx, &kb, &who, &key, &path, files, &title, &body, "<!-- orc:game -->")
 }
 
 /// Files on disk plus pending changes.
 struct Overlay<'a> {
     base: FsSource,
-    files: &'a BTreeMap<String, String>,
+    files: &'a BTreeMap<String, Vec<u8>>,
 }
 
 impl FileSource for Overlay<'_> {
@@ -213,7 +263,10 @@ impl FileSource for Overlay<'_> {
         v
     }
     fn read(&self, path: &str) -> Option<String> {
-        self.files.get(path).cloned().or_else(|| self.base.read(path))
+        match self.files.get(path) {
+            Some(data) => String::from_utf8(data.clone()).ok(),
+            None => self.base.read(path),
+        }
     }
 }
 
@@ -226,7 +279,7 @@ fn open_pr(
     repo: &str,
     clone: &Path,
     branch: &str,
-    files: &BTreeMap<String, String>,
+    files: &BTreeMap<String, Vec<u8>>,
     title: &str,
     body: &str,
 ) -> Result<String> {
@@ -252,10 +305,10 @@ fn open_pr(
     let _ = git(Some(clone), &["worktree", "remove", "--force", &work_s]);
     git(Some(clone), &["worktree", "add", "--quiet", "-B", branch, &work_s, "origin/HEAD"])?;
     let result = (|| -> Result<String> {
-        for (p, text) in files {
+        for (p, data) in files {
             let full = work.join(p);
             std::fs::create_dir_all(full.parent().expect("has parent"))?;
-            std::fs::write(full, text)?;
+            std::fs::write(full, data)?;
         }
         git(Some(&work), &["add", "--", "kb"])?;
         let name = format!("user.name={who}");

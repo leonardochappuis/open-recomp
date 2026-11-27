@@ -36,13 +36,17 @@
 - [ ] Semantic matching for check_problem (today: word overlap + the agent's own judgment)
 
 ## Milestone 3 - web front end
-- [ ] Project directory with a game search bar
-- [ ] Game pages: recomp status, findings, attempts, environment matrix
-      ("works on NVIDIA/Linux, broken on AMD/Windows")
+- [x] Live dashboard on GitHub Pages (site/, `orc dashboard`, orc-dashboard workflow):
+      activity feed, being-worked-on-now, games browser with search and console filter,
+      game pages (attempts, findings, hardware matrix, activity), attempts, findings
+- [x] Game catalog (kb/games/*.toml, `orc game add`, covers uploaded or https URL)
+- [x] Registry of other projects' knowledge repos (registry.toml)
+- [ ] Faster rebuilds (prebuilt orc instead of compiling in the Action)
+- [ ] Render finding details as Markdown (sanitized) instead of plain text
 - [ ] Coordinator dashboard: needs-human queue, quarantine, rollback
 - [ ] Test request queue for testers
-- [ ] Game metadata and cover art from an open game database, with user upload as a
-      fallback when the game can't be found. Candidates to evaluate (check ToS/licensing,
+- [ ] Game metadata and cover art from an open game database (user upload already works
+      as the fallback). Candidates to evaluate (check ToS/licensing,
       API keys, attribution, hotlink vs cache rules before picking):
   - Wikidata (CC0 metadata, cross-links to other DBs' ids; little box art)
   - libretro-thumbnails (box art keyed by No-Intro/Redump names, good for consoles)

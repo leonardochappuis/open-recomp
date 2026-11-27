@@ -7,10 +7,12 @@
 //! kb/moderation.toml      quarantined users and findings
 //! kb/findings/F-*.md      one finding per file
 //! kb/envs/<id>.json       hardware/software profiles referenced by findings
+//! kb/games/<p>-<id>.toml   game catalog (covers in kb/games/covers/)
 //! ```
 
 pub mod config;
 pub mod finding;
+pub mod game;
 pub mod scope;
 pub mod search;
 pub mod source;
@@ -18,6 +20,7 @@ pub mod validate;
 
 pub use config::{Moderation, Policy, Project};
 pub use finding::{Author, Dispute, Evidence, EvidenceKind, Finding, Kind, ReproResult, Reproduction, Status};
+pub use game::{Game, GameStatus, GAMES_DIR};
 pub use source::{FileSource, FsSource, GitSource};
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -49,6 +52,8 @@ pub struct Kb {
     pub findings: BTreeMap<String, (String, Finding)>,
     /// env id -> raw JSON
     pub envs: BTreeMap<String, String>,
+    /// scope -> (path, game)
+    pub games: BTreeMap<String, (String, Game)>,
     pub errors: Vec<LoadError>,
 }
 
@@ -78,6 +83,28 @@ impl Kb {
             };
             if let Some(text) = src.read(&path) {
                 kb.envs.insert(id.to_string(), text);
+            }
+        }
+        for path in src.list(GAMES_DIR) {
+            if is_placeholder(&path) {
+                continue;
+            }
+            if !path.ends_with(".toml") {
+                kb.err(&path, "only .toml files belong in kb/games (covers go in kb/games/covers)".into());
+                continue;
+            }
+            let Some(text) = src.read(&path) else { continue };
+            match toml::from_str::<Game>(&text) {
+                Ok(g) => {
+                    let scope = g.scope();
+                    if let Some((other, _)) = kb.games.get(&scope) {
+                        let msg = format!("duplicate game {scope} (also in {other})");
+                        kb.err(&path, msg);
+                    } else {
+                        kb.games.insert(scope, (path, g));
+                    }
+                }
+                Err(e) => kb.err(&path, format!("invalid game: {e}")),
             }
         }
         for path in src.list(FINDINGS_DIR) {

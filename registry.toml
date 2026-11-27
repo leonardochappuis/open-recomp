@@ -1,0 +1,8 @@
+# Projects shown on the open-recomp dashboard besides this repo.
+# Each entry is the GitHub owner/name of a project's knowledge repo (the repo
+# with .orc/ and kb/). Add yours with a pull request.
+#
+# [[projects]]
+# repo = "someone/some-game-recomp"
+
+projects = []

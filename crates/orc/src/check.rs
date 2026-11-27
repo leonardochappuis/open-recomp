@@ -49,7 +49,7 @@ fn problem_text(body: &str) -> String {
     body.lines().skip(1).take_while(|l| l.trim() != "---").collect::<Vec<_>>().join("\n")
 }
 
-fn field(body: &str, name: &str) -> Option<String> {
+pub fn field(body: &str, name: &str) -> Option<String> {
     let prefix = format!("**{name}:** ");
     body.lines().find_map(|l| l.strip_prefix(&prefix)).map(|s| s.trim().to_string())
 }

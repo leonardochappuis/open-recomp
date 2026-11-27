@@ -1,6 +1,7 @@
 mod attempts;
 mod check;
 mod context;
+mod dashboard;
 mod gh;
 mod hooks;
 mod mcp;
@@ -80,6 +81,27 @@ enum Cmd {
     /// Attempts (GitHub issues).
     #[command(subcommand)]
     Attempt(AttemptCmd),
+    /// Game catalog.
+    #[command(subcommand)]
+    Game(GameCmd),
+    /// Build the dashboard data (data.json) and site.
+    Dashboard {
+        /// Output directory.
+        #[arg(long, default_value = "_site")]
+        out: PathBuf,
+        /// Directory with the dashboard's static files.
+        #[arg(long, default_value = "site")]
+        site: PathBuf,
+        /// Knowledge repo root (default: current directory).
+        #[arg(long)]
+        root: Option<PathBuf>,
+        /// GitHub owner/name for attempts and links (default: from .orc/project.toml).
+        #[arg(long)]
+        repo: Option<String>,
+        /// Skip GitHub (no attempts, no registry), for local previews.
+        #[arg(long)]
+        offline: bool,
+    },
     /// Validate the knowledge base, or a change to it (CI).
     Validate {
         /// Directory to validate (default: the current directory).
@@ -210,6 +232,42 @@ enum AttemptCmd {
     },
 }
 
+// Parsed once at startup; variant size does not matter.
+#[allow(clippy::large_enum_variant)]
+#[derive(Subcommand)]
+enum GameCmd {
+    /// Add or update a game (opens a pull request; a maintainer merges it).
+    Add {
+        #[arg(long)]
+        platform: String,
+        /// Title id or serial.
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        name: String,
+        #[arg(long, default_value = "planned")]
+        status: orc_kb::GameStatus,
+        #[arg(long)]
+        region: Option<String>,
+        #[arg(long)]
+        year: Option<u16>,
+        /// Recomp repo owner/name (repeatable).
+        #[arg(long = "repo")]
+        repos: Vec<String>,
+        /// Cover image URL (https).
+        #[arg(long, conflicts_with = "cover_file")]
+        cover: Option<String>,
+        /// Local cover image to upload (png/jpg/webp, max 1 MiB).
+        #[arg(long)]
+        cover_file: Option<PathBuf>,
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+        #[arg(long)]
+        description: Option<String>,
+    },
+    List,
+}
+
 #[derive(Subcommand)]
 enum HookCmd {
     SessionStart,
@@ -291,6 +349,16 @@ fn run(cli: Cli) -> Result<()> {
         }
         Cmd::Finding(f) => finding(f)?,
         Cmd::Attempt(a) => attempt(a)?,
+        Cmd::Game(g) => game(g)?,
+        Cmd::Dashboard { out, site, root, repo, offline } => {
+            let root = root.unwrap_or(std::env::current_dir()?);
+            let repo = match repo {
+                Some(r) => Some(r),
+                None => Ctx::discover(&root).ok().and_then(|c| c.project.kb_repo().map(String::from)),
+            };
+            dashboard::build(&root, repo.as_deref(), &site, &out, offline)?;
+            println!("dashboard written to {}", out.display());
+        }
         Cmd::Validate { root, base, head, pr_author, require_auto, json } => {
             let root = root.unwrap_or(std::env::current_dir()?);
             let report = match (&base, &head) {
@@ -413,6 +481,31 @@ fn attempt(cmd: AttemptCmd) -> Result<()> {
         AttemptCmd::Close { number, outcome, summary, finding } => {
             attempts::close(&repo, number, &policy()?, outcome, &summary, &finding)?;
             println!("#{number} closed");
+        }
+    }
+    Ok(())
+}
+
+fn game(cmd: GameCmd) -> Result<()> {
+    let c = ctx()?;
+    match cmd {
+        GameCmd::Add { platform, id, name, status, region, year, repos, cover, cover_file, tags, description } => {
+            let g = orc_kb::Game { name, platform, id, status, region, year, repos, cover, tags, description };
+            let (location, needs_human) = publish::save_game(&c, g, cover_file.as_deref())?;
+            println!("{location}");
+            for n in needs_human {
+                println!("  needs a human: {n}");
+            }
+        }
+        GameCmd::List => {
+            let kb = c.kb()?;
+            if kb.games.is_empty() {
+                println!("No games yet.");
+            }
+            for (_, g) in kb.games.values() {
+                let status = serde_json::to_value(g.status)?.as_str().unwrap_or_default().to_string();
+                println!("{:<8} {:<14} {:<12} {}", g.platform, g.id, status, g.name);
+            }
         }
     }
     Ok(())

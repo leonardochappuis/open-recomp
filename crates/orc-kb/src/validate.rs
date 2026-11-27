@@ -51,7 +51,64 @@ pub fn check(kb: &Kb) -> Report {
     for (id, json) in &kb.envs {
         check_env(id, json, &mut r);
     }
+    for (path, g) in kb.games.values() {
+        check_game(path, g, &mut r);
+    }
     r
+}
+
+fn check_game(path: &str, g: &crate::Game, r: &mut Report) {
+    use crate::game::{is_cover, is_game_id, is_platform};
+    let at = |m: &str| format!("{path}: {m}");
+    if !is_platform(&g.platform) {
+        r.err(at("platform must be 2-12 lowercase letters/digits (n64, ps2, x360, ...)"));
+    }
+    if !is_game_id(&g.id) {
+        r.err(at("id must be 1-32 letters, digits, - or _"));
+    }
+    if path != g.path() {
+        r.err(at(&format!("file name must be {}", g.path())));
+    }
+    len(r, path, "name", &g.name, 1, 120);
+    if let Some(x) = &g.region {
+        len(r, path, "region", x, 1, 24);
+    }
+    if let Some(y) = g.year {
+        if !(1970..=2100).contains(&y) {
+            r.err(at("year out of range"));
+        }
+    }
+    if g.repos.len() > 10 || g.repos.iter().any(|x| !is_repo(x)) {
+        r.err(at("repos must be up to 10 GitHub owner/name entries"));
+    }
+    if let Some(c) = &g.cover {
+        if !is_cover(c) {
+            r.err(at("cover must be an https:// URL or kb/games/covers/<name>.png|jpg|jpeg|webp"));
+        }
+    }
+    if g.tags.len() > 10
+        || g.tags.iter().any(|t| {
+            t.is_empty()
+                || t.len() > 24
+                || t.bytes().any(|b| !(b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-'))
+        })
+    {
+        r.err(at("tags must be up to 10 lowercase words"));
+    }
+    if let Some(d) = &g.description {
+        len(r, path, "description", d, 1, 500);
+        if let Some(hit) = instruction_like(d) {
+            r.human(at(&format!("description contains instruction-like text ({hit:?})")));
+        }
+    }
+}
+
+fn is_repo(s: &str) -> bool {
+    let parts: Vec<&str> = s.split('/').collect();
+    parts.len() == 2
+        && parts.iter().all(|p| {
+            !p.is_empty() && p.len() <= 100 && p.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
+        })
 }
 
 fn check_finding(kb: &Kb, path: &str, f: &Finding, r: &mut Report) {
@@ -164,7 +221,9 @@ pub fn check_change(base: &Kb, head: &Kb, pr_author: Option<&str>, changed_paths
 
     for p in changed_paths {
         let data = (p.starts_with("kb/findings/") || p.starts_with("kb/envs/")) && !p.ends_with("README.md");
-        if !data {
+        if p.starts_with("kb/games/") {
+            r.human(format!("{p}: game catalog change; a maintainer reviews it"));
+        } else if !data {
             r.human(format!("{p}: not a finding or env file"));
         }
     }
@@ -394,6 +453,34 @@ mod tests {
             notes: None,
             evidence: vec![],
         }
+    }
+
+    #[test]
+    fn games_validate_and_need_humans() {
+        let mut src = MemSource::default();
+        let mut g = crate::Game {
+            name: "Example".into(),
+            platform: "ps2".into(),
+            id: "SLUS-20062".into(),
+            status: crate::GameStatus::Planned,
+            region: None,
+            year: Some(2001),
+            repos: vec![],
+            cover: Some("https://example.com/c.png".into()),
+            tags: vec!["action".into()],
+            description: None,
+        };
+        src.put(&g.path(), &g.render());
+        let kb = Kb::load(&src);
+        assert_eq!(kb.games.len(), 1);
+        assert!(check(&kb).auto_mergeable(), "{:?}", check(&kb));
+        let r = check_change(&Kb::default(), &kb, Some("x"), &[g.path()]);
+        assert!(r.ok() && !r.auto_mergeable(), "new games need a maintainer: {r:?}");
+
+        g.cover = Some("javascript:alert(1)".into());
+        let mut src = MemSource::default();
+        src.put(&g.path(), &g.render());
+        assert!(!check(&Kb::load(&src)).ok());
     }
 
     #[test]

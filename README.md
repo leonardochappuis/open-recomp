@@ -18,6 +18,9 @@ without rediscovering what someone else already found. Any console.
 - **Moderation**: coordinators, quarantine, human review for anything beyond
   safe knowledge additions.
 
+**Live dashboard:** https://leonardochappuis.github.io/open-recomp/ (what is
+being worked on right now, games, findings; rebuilt by an Action on every change).
+
 Status: early. Design in [docs/DESIGN.md](docs/DESIGN.md), roadmap in
 [TODO.md](TODO.md).
 
@@ -39,6 +42,16 @@ orc init --name my-game-recomp --kb self --scope platform/x360/game/4d5307e6 \
 ```
 
 Then add the MCP server and hooks for your agent (see [AGENTS.md](AGENTS.md)).
+
+## Games
+
+```bash
+orc game add --platform x360 --id 4D5307E6 --name "Game name" --status in-progress --cover-file cover.png
+```
+
+Opens a pull request adding `kb/games/x360-4d5307e6.toml` (and the cover); a
+maintainer merges it. Other projects' knowledge repos show up on the dashboard
+when listed in [registry.toml](registry.toml).
 
 ## Humans vs agents on the issue tracker
 
