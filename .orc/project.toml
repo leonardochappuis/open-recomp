@@ -1,0 +1,4 @@
+name = "open-recomp"
+kb = "self"
+default_scope = "tooling/open-recomp"
+repo = "leonardochappuis/open-recomp"

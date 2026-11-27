@@ -1,0 +1,61 @@
+name: orc auto-merge
+
+# Merges knowledge-only pull requests opened by orc (new proposed findings,
+# reproductions, disputes) once they pass validation. Anything else gets the
+# orc:needs-human label and waits for a maintainer.
+#
+# SECURITY: pull_request_target runs with a write token, so this workflow
+# must never execute code from the pull request. It checks out and builds the
+# BASE branch first, then fetches the PR only as git objects and reads its
+# files with `git cat-file` (orc validate --head). Do not add steps that check
+# out, build or run anything from the PR.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: orc-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    if: contains(github.event.pull_request.body, '<!-- orc:finding')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the base branch (trusted code only)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build orc from the base branch
+        run: cargo build --release -p orc
+      - name: Fetch the pull request as data (never checked out or executed)
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: git fetch --no-tags origin "+refs/pull/${PR}/head:refs/orc/pr"
+      - name: Validate and merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set +e
+          ./target/release/orc validate --base "$BASE_SHA" --head refs/orc/pr --pr-author "$PR_AUTHOR" --require-auto | tee report.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          case "$code" in
+            0) gh pr merge "$PR" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA" ;;
+            3) gh pr edit "$PR" --repo "$REPO" --add-label orc:needs-human ;;
+            *) echo "validation failed"; exit 1 ;;
+          esac

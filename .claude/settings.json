@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "command -v orc >/dev/null 2>&1 && orc hook session-start || true", "timeout": 30 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "command -v orc >/dev/null 2>&1 && orc hook stop || true", "timeout": 30 }
+        ]
+      }
+    ]
+  }
+}

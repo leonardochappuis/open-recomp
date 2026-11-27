@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "os": {
+    "family": "linux",
+    "name": "arch",
+    "version": null,
+    "kernel": "7.3.5-arch1-1"
+  },
+  "cpu": {
+    "arch": "x86_64",
+    "vendor": "amd",
+    "model": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "logical_cores": 32
+  },
+  "gpus": [
+    {
+      "vendor": "nvidia",
+      "model": "NVIDIA GeForce RTX 3080",
+      "kind": "discrete",
+      "driver": "620.73.04",
+      "vulkan": "1.4.357",
+      "vram_mb": null
+    }
+  ],
+  "memory": {
+    "ram_gb": 60,
+    "unified": false
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "open-recomp": {
+      "command": "orc",
+      "args": ["mcp"]
+    }
+  }
+}

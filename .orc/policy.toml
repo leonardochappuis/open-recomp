@@ -1,0 +1,13 @@
+coordinators = ["leonardochappuis"]
+
+[findings]
+min_reproducers = 1
+max_body_chars = 8000
+
+[attempts]
+lease_default_hours = 72
+lease_min_hours = 1
+lease_max_hours = 336
+paused_lease_hours = 336
+remind_at = 0.75
+grace_days = 7
