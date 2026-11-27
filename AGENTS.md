@@ -44,7 +44,11 @@ args = ["mcp"]
 
 - Rust workspace: `crates/orc-env` (hardware profile), `crates/orc-kb`
   (findings format, validation, search), `crates/orc` (CLI, MCP server,
-  GitHub attempts, hooks).
+  GitHub attempts, hooks, dashboard data).
+- Dashboard UI: `web/` (Vite + React + Tailwind, shadcn-style components in
+  `web/src/components/ui`). Dev: put a `data.json` from `orc dashboard --out _site`
+  in `web/public/`, then `npm run dev` in `web/`. Treat every field of data.json
+  as untrusted: React escapes text, URLs go through `safeUrl`.
 - Before committing: `cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test && cargo run -q -p orc -- validate`.
 - Design: `docs/DESIGN.md`. Roadmap: `TODO.md`.
 - Default scope for this project: `tooling/open-recomp` (sub-scopes like

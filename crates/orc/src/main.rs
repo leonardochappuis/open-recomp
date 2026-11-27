@@ -89,8 +89,8 @@ enum Cmd {
         /// Output directory.
         #[arg(long, default_value = "_site")]
         out: PathBuf,
-        /// Directory with the dashboard's static files.
-        #[arg(long, default_value = "site")]
+        /// Built dashboard site (`npm run build` in web/).
+        #[arg(long, default_value = "web/dist")]
         site: PathBuf,
         /// Knowledge repo root (default: current directory).
         #[arg(long)]

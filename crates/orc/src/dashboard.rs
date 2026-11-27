@@ -22,7 +22,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 pub const REGISTRY_FILE: &str = "registry.toml";
-const SITE_FILES: &[&str] = &["index.html", "app.js", "style.css", "favicon.svg"];
 const MAX_ACTIVITY: usize = 400;
 const MAX_BODY: usize = 4000;
 
@@ -47,11 +46,13 @@ struct Source {
 
 pub fn build(root: &Path, hub_repo: Option<&str>, site: &Path, out: &Path, offline: bool) -> Result<()> {
     std::fs::create_dir_all(out)?;
-    for f in SITE_FILES {
-        let from = site.join(f);
-        if from.exists() {
-            std::fs::copy(&from, out.join(f)).with_context(|| format!("copying {}", from.display()))?;
-        }
+    if site.is_dir() {
+        copy_dir(site, out).with_context(|| format!("copying {}", site.display()))?;
+    } else {
+        eprintln!(
+            "orc dashboard: {} not found; writing data.json only (build the site with `npm run build` in web/)",
+            site.display()
+        );
     }
 
     let mut sources = vec![Source { repo: hub_repo.map(String::from), root: root.to_path_buf() }];
@@ -297,6 +298,22 @@ impl Data {
         }
         Ok(())
     }
+}
+
+/// Copy a built site into the output directory (skips any stale data.json).
+fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for e in std::fs::read_dir(from)? {
+        let e = e?;
+        let name = e.file_name();
+        let (src, dst) = (e.path(), to.join(&name));
+        if e.file_type()?.is_dir() {
+            copy_dir(&src, &dst)?;
+        } else if name != "data.json" {
+            std::fs::copy(&src, &dst)?;
+        }
+    }
+    Ok(())
 }
 
 /// Copy a cover from the knowledge repo into the site, return its site path.
