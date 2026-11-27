@@ -5,7 +5,7 @@
 - [x] ai-crew-sync review (docs/ai-crew-sync-review.md): optional add-on only
 - [x] `orc env` hardware/software profile (crates/orc-env)
 - [x] License: MIT
-- [ ] Publish the repo on GitHub, run `orc init` there to create labels
+- [ ] Publish the repo on the new GitHub account, run `orc init` there to create labels
 
 ## Milestone 1 - knowledge MVP
 - [x] Findings format (Markdown + TOML front matter), load, search, scopes (crates/orc-kb)
@@ -18,8 +18,10 @@
 - [x] Claude Code hooks: session-start context, stop renews leases
 - [x] Actions: ci (3 OSes), orc-automerge (pull_request_target, data-only), orc-sweep (hourly)
 - [x] This repo is an open-recomp project (.orc/, kb/, AGENTS.md, .mcp.json, hooks)
-- [ ] Live test against GitHub: open/renew/note/close attempts, finding PRs from a fork,
-      auto-merge, sweep, sub-issues API
+- [x] Live test against GitHub (2026-11-27): open, sub-issue link, note, check_problem,
+      renew, pause, close, finding PR + auto-merge, sweeper Action (remind, expire), close
+      after grace, session-start hook; CI green on Linux, Windows, macOS
+- [ ] Live test of a finding PR from a fork (needs a second account without push access)
 - [ ] Codex hooks (session start context, lease renewal)
 - [ ] Prebuilt `orc` release binaries (Actions currently build from source)
 - [ ] Session end: ask the agent to record an outcome for open attempts
