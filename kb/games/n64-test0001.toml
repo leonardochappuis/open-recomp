@@ -1,0 +1,6 @@
+name = "Pipeline Test (delete me)"
+platform = "n64"
+id = "TEST0001"
+status = "planned"
+targets = ["windows", "linux"]
+description = "Live test of the add-a-game flow; will be removed."
