@@ -1,5 +1,5 @@
 import { ArrowLeft, Cpu } from 'lucide-react'
-import { inScope, platName, safeUrl, type Data, type Hw } from '@/lib/data'
+import { hubOf, inScope, safeUrl, type Data, type Hw } from '@/lib/data'
 import { withParam, type Route } from '@/lib/router'
 import { ActivityFeed, eventScope } from '@/components/activity'
 import { AttemptCard } from '@/components/attempt'
@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { gameStats } from './Games'
+import { ConsoleLabel, Targets } from '@/components/game-tile'
+import { ContributeDialog } from '@/components/dialogs'
 
 type Row = { reported: number; reproduced: number; not: number; active: number }
 
@@ -76,7 +78,7 @@ function HardwareMatrix({ data, scope }: { data: Data; scope: string }) {
   )
 }
 
-export function GameView({ data, route, scope }: { data: Data; route: Route; scope: string }) {
+export function GameView({ data, route, scope, fresh }: { data: Data; route: Route; scope: string; fresh: Set<string> }) {
   const g = gameStats(data).find((x) => x.scope === scope)
   if (!g) return <EmptyState title="Game not found"><a href="#/games" className="text-primary">All games</a></EmptyState>
   const tab = route.params.get('tab') ?? 'active'
@@ -88,7 +90,7 @@ export function GameView({ data, route, scope }: { data: Data; route: Route; sco
 
   return (
     <>
-      <a href="#/games" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <a href="#/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" /> Games
       </a>
       <section className="relative mb-8 overflow-hidden rounded-xl border bg-card">
@@ -97,15 +99,17 @@ export function GameView({ data, route, scope }: { data: Data; route: Route; sco
           <Cover game={g} large className="w-36 shrink-0 rounded-lg border shadow-xl sm:w-44" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>{platName(g.platform)}</span>
+              <ConsoleLabel platform={g.platform} />
               <span>&middot;</span>
               <span className="font-mono text-xs">{g.id}</span>
               {g.region && <><span>&middot;</span><span>{g.region}</span></>}
               {g.year && <><span>&middot;</span><span>{g.year}</span></>}
             </div>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">{g.name}</h1>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{g.title || g.name}</h1>
+            {g.title && <p className="text-lg text-muted-foreground">{g.name}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <GameStatus status={g.status} />
+              <Targets targets={g.targets} className="bg-muted text-foreground backdrop-blur-none" />
               {(g.tags ?? []).map((t) => <Badge key={t}>{t}</Badge>)}
             </div>
             {g.description && <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{g.description}</p>}
@@ -116,6 +120,10 @@ export function GameView({ data, route, scope }: { data: Data; route: Route; sco
                   <div className="text-xs text-muted-foreground">{l}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <ContributeDialog hub={hubOf(data)} game={g} />
+              {g.live > 0 && <span className="text-sm text-muted-foreground">{g.live} {g.live === 1 ? 'person is' : 'people are'} working on it right now</span>}
             </div>
             {(g.repos ?? []).length > 0 && (
               <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -148,7 +156,7 @@ export function GameView({ data, route, scope }: { data: Data; route: Route; sco
         </TabsContent>
         <TabsContent value="hardware"><HardwareMatrix data={data} scope={g.scope} /></TabsContent>
         <TabsContent value="activity">
-          <Card className="px-3 py-2"><ActivityFeed events={events} data={data} fresh={new Set()} limit={150} /></Card>
+          <Card className="px-3 py-2"><ActivityFeed events={events} data={data} fresh={fresh} limit={150} /></Card>
         </TabsContent>
         <TabsContent value="closed">
           {closed.length ? (

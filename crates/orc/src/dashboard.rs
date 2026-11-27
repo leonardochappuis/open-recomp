@@ -94,6 +94,7 @@ pub fn build(root: &Path, hub_repo: Option<&str>, site: &Path, out: &Path, offli
         "attempts": d.attempts,
         "closed_attempts": d.closed,
         "problems": d.problems,
+        "requests": d.requests,
         "envs": d.envs,
         "activity": d.activity,
         "warnings": warnings,
@@ -124,6 +125,7 @@ struct Data {
     attempts: Vec<Value>,
     closed: Vec<Value>,
     problems: Vec<Value>,
+    requests: Vec<Value>,
     envs: Map<String, Value>,
     activity: Vec<Value>,
 }
@@ -191,13 +193,14 @@ impl Data {
             }
         }
 
-        for (_, g) in kb.games.values() {
+        for (path, g) in kb.games.values() {
             let cover = match &g.cover {
                 Some(c) if c.starts_with("https://") => Some(c.clone()),
                 Some(c) => copy_cover(&src.root, c, &repo, out),
                 None => None,
             };
             let mut v = serde_json::to_value(g)?;
+            v["added"] = json!(added_date(&src.root, path));
             v["scope"] = json!(g.scope());
             v["repo"] = json!(repo);
             v["cover"] = json!(cover);
@@ -269,6 +272,31 @@ impl Data {
             }));
         }
 
+        // Unapproved "Add a game" submissions, for the Unfiltered page.
+        let reqs = gh::api(
+            "GET",
+            &format!("repos/{repo}/issues?labels={}&state=open&per_page=100", crate::requests::LABEL_REQUEST),
+            None,
+        )?;
+        for v in reqs.as_array().into_iter().flatten() {
+            let fields = crate::requests::parse_form(&s(v, "body"));
+            let (game, errors) = match crate::requests::game_from_form(&fields) {
+                Ok(g) => {
+                    let mut gv = serde_json::to_value(&g)?;
+                    gv["scope"] = json!(g.scope());
+                    gv["repo"] = json!(repo);
+                    (gv, Vec::new())
+                }
+                Err(e) => (Value::Null, e),
+            };
+            self.requests.push(json!({
+                "repo": repo, "number": v["number"], "url": v["html_url"], "title": v["title"],
+                "author": v["user"]["login"], "created_at": v["created_at"], "comments": v["comments"],
+                "game": game, "errors": errors,
+                "name": fields.get("Original game name"), "console": fields.get("Console"),
+            }));
+        }
+
         // Progress notes and other comments on attempts.
         let comments =
             gh::api("GET", &format!("repos/{repo}/issues/comments?sort=created&direction=desc&per_page=100"), None)?;
@@ -298,6 +326,12 @@ impl Data {
         }
         Ok(())
     }
+}
+
+/// When a catalog file first appeared in git (None in shallow or non-git checkouts).
+fn added_date(root: &Path, path: &str) -> Option<String> {
+    let out = git(Some(root), &["log", "--diff-filter=A", "--follow", "--format=%cI", "--", path]).ok()?;
+    out.lines().last().map(|l| l.trim().to_string()).filter(|l| !l.is_empty())
 }
 
 /// Copy a built site into the output directory (skips any stale data.json).

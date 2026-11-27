@@ -25,6 +25,7 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-glow: var(--glow);
   --radius-lg: 0.75rem;
   --radius-md: 0.6rem;
   --radius-sm: 0.4rem;
@@ -48,6 +49,7 @@
   --warning: oklch(0.68 0.15 70);
   --danger: oklch(0.58 0.21 25);
   --info: oklch(0.6 0.15 240);
+  --glow: oklch(0.7 0.14 200);
 }
 
 .dark {
@@ -68,6 +70,7 @@
   --warning: oklch(0.8 0.15 80);
   --danger: oklch(0.7 0.19 25);
   --info: oklch(0.72 0.14 240);
+  --glow: oklch(0.82 0.13 195);
 }
 
 @layer base {

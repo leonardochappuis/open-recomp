@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: write
 
 concurrency:
   group: orc-sweep
@@ -35,4 +36,6 @@ jobs:
         run: |
           args=()
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
-          ./target/release/orc sweep --repo "$GITHUB_REPOSITORY" "${args[@]}"
+          ./target/release/orc sweep --repo "$GITHUB_REPOSITORY" "${args[@]}" | tee sweep.txt
+          # Changes made with GITHUB_TOKEN don't trigger other workflows; refresh the dashboard.
+          if [ -s sweep.txt ] && [ "$DRY_RUN" != "true" ]; then gh workflow run orc-dashboard.yml --repo "$GITHUB_REPOSITORY"; fi

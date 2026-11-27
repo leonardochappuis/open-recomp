@@ -109,7 +109,7 @@ export function LiveDot({ className, tone = 'success' }: { className?: string; t
   )
 }
 
-export function Cover({ game, live = 0, className, large }: { game: Game; live?: number; className?: string; large?: boolean }) {
+export function Cover({ game, live = 0, className, large, bare }: { game: Game; live?: number; className?: string; large?: boolean; bare?: boolean }) {
   const url = safeUrl(game.cover)
   const [broken, setBroken] = React.useState(false)
   const hue = hueOf(game.name + game.platform)
@@ -128,7 +128,7 @@ export function Cover({ game, live = 0, className, large }: { game: Game; live?:
           <span className={cn('font-bold tracking-tight text-white/90 drop-shadow', large ? 'text-5xl' : 'text-4xl')}>{initials}</span>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
+      {!bare && <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white backdrop-blur">
           {platShort(game.platform)}
         </span>
@@ -137,7 +137,7 @@ export function Cover({ game, live = 0, className, large }: { game: Game; live?:
             <LiveDot className="size-1.5 [&>span]:size-1.5" /> {live} live
           </span>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

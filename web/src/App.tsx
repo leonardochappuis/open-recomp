@@ -6,11 +6,12 @@ import { EmptyState } from '@/components/common'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Live } from '@/views/Live'
-import { Games } from '@/views/Games'
+import { Home } from '@/views/Home'
 import { GameView } from '@/views/Game'
 import { Attempts } from '@/views/Attempts'
 import { Findings } from '@/views/Findings'
 import { FindingView } from '@/views/FindingView'
+import { Unfiltered } from '@/views/Unfiltered'
 
 function Loading() {
   return (
@@ -29,20 +30,21 @@ export default function App() {
   useEffect(() => { window.scrollTo(0, 0) }, [route.path])
 
   const p = route.path
-  const nav = p.startsWith('/game') ? 'games' : p.startsWith('/attempts') ? 'attempts' : p.startsWith('/finding') ? 'findings' : 'live'
+  const nav = p === '/live' ? 'live' : p.startsWith('/attempts') ? 'attempts' : p.startsWith('/finding') ? 'findings' : 'games'
 
   let view: React.ReactNode
   if (!data) view = error ? <EmptyState title="Could not load data">The dashboard data is not available yet. Try again in a minute.</EmptyState> : <Loading />
-  else if (p === '/') view = <Live data={data} fresh={fresh} />
-  else if (p === '/games') view = <Games data={data} route={route} />
-  else if (p.startsWith('/game/')) view = <GameView data={data} route={route} scope={decodeURIComponent(p.slice(6))} />
+  else if (p === '/' || p === '/games') view = <Home data={data} route={route} />
+  else if (p === '/live') view = <Live data={data} fresh={fresh} />
+  else if (p.startsWith('/game/')) view = <GameView data={data} route={route} fresh={fresh} scope={decodeURIComponent(p.slice(6))} />
+  else if (p === '/unfiltered') view = <Unfiltered data={data} />
   else if (p === '/attempts') view = <Attempts data={data} route={route} />
   else if (p === '/findings') view = <Findings data={data} route={route} />
   else if (p.startsWith('/finding/')) {
     const parts = p.slice(9).split('/').map(decodeURIComponent)
     const id = parts.pop() ?? ''
     view = <FindingView data={data} repo={parts.join('/')} id={id} />
-  } else view = <EmptyState title="Page not found"><a href="#/" className="text-primary">Back to live</a></EmptyState>
+  } else view = <EmptyState title="Page not found"><a href="#/" className="text-primary">Back to games</a></EmptyState>
 
   return (
     <TooltipProvider>

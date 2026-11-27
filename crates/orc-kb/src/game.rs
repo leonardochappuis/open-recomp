@@ -11,7 +11,11 @@ pub const COVERS_DIR: &str = "kb/games/covers";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Game {
+    /// The original game's name.
     pub name: String,
+    /// The recomp project's own name, if it has one (e.g. "Longshot").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
     /// Platform slug: n64, ps1, ps2, ps3, psp, gc, wii, x360, xbox, switch, ...
     pub platform: String,
     /// Title id or serial, e.g. 4D5307E6 or SLUS-20062.
@@ -27,6 +31,9 @@ pub struct Game {
     /// `https://...` image, or a file under `kb/games/covers/`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cover: Option<String>,
+    /// PC platforms the recomp runs on: windows, linux, macos, android, web.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -70,6 +77,8 @@ impl Game {
     }
 }
 
+pub const TARGETS: &[&str] = &["windows", "linux", "macos", "android", "web"];
+
 pub fn is_platform(s: &str) -> bool {
     (2..=12).contains(&s.len()) && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
 }
@@ -98,6 +107,8 @@ mod tests {
     pub fn sample() -> Game {
         Game {
             name: "Example Racer".into(),
+            title: Some("Turbo Recomp".into()),
+            targets: vec!["windows".into(), "linux".into()],
             platform: "x360".into(),
             id: "4D5307E6".into(),
             status: GameStatus::InProgress,

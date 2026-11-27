@@ -57,6 +57,13 @@ pub fn check(kb: &Kb) -> Report {
     r
 }
 
+/// Problems with a game entry on its own (used for issue-form requests).
+pub fn game_errors(g: &crate::Game) -> Vec<String> {
+    let mut r = Report::default();
+    check_game(&g.path(), g, &mut r);
+    r.errors.into_iter().chain(r.needs_human).collect()
+}
+
 fn check_game(path: &str, g: &crate::Game, r: &mut Report) {
     use crate::game::{is_cover, is_game_id, is_platform};
     let at = |m: &str| format!("{path}: {m}");
@@ -70,6 +77,12 @@ fn check_game(path: &str, g: &crate::Game, r: &mut Report) {
         r.err(at(&format!("file name must be {}", g.path())));
     }
     len(r, path, "name", &g.name, 1, 120);
+    if let Some(t) = &g.title {
+        len(r, path, "title", t, 1, 80);
+    }
+    if g.targets.iter().any(|t| !crate::game::TARGETS.contains(&t.as_str())) {
+        r.err(at("targets must be among windows, linux, macos, android, web"));
+    }
     if let Some(x) = &g.region {
         len(r, path, "region", x, 1, 24);
     }
@@ -460,6 +473,8 @@ mod tests {
         let mut src = MemSource::default();
         let mut g = crate::Game {
             name: "Example".into(),
+            title: None,
+            targets: vec!["windows".into()],
             platform: "ps2".into(),
             id: "SLUS-20062".into(),
             status: crate::GameStatus::Planned,

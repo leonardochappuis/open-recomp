@@ -25,15 +25,20 @@ export type Attempt = {
 export type ClosedAttempt = { repo: string; number: number; url: string; title: string; author: string; scope: string; hw?: Hw | null; closed_at: string; reason: string; created_at: string }
 export type Problem = { repo: string; number: number; url: string; title: string; state: string; author: string; created_at: string; sub_issues?: { total: number; completed: number } | null }
 export type Game = {
-  name: string; platform: string; id: string; status: string; region?: string; year?: number; repos?: string[]
-  cover?: string | null; tags?: string[]; description?: string; scope: string; repo: string
+  name: string; title?: string | null; platform: string; id: string; status: string; region?: string; year?: number
+  repos?: string[]; cover?: string | null; targets?: string[]; tags?: string[]; description?: string
+  scope: string; repo: string; added?: string | null
+}
+export type GameRequest = {
+  repo: string; number: number; url: string; title: string; author: string; created_at: string; comments: number
+  game: Game | null; errors: string[]; name?: string | null; console?: string | null
 }
 export type ActivityEvent = { time: string; type: string; repo: string; who: string; text: string; target: { finding?: string; attempt?: number; url?: string; reason?: string } }
 export type Project = { repo: string; name: string; url?: string | null; findings: number; games: number }
 
 export type Data = {
   generated_at: string; hub?: string | null; projects: Project[]; games: Game[]; findings: Finding[]
-  attempts: Attempt[]; closed_attempts: ClosedAttempt[]; problems: Problem[]; envs: Record<string, Hw>
+  attempts: Attempt[]; closed_attempts: ClosedAttempt[]; problems: Problem[]; requests?: GameRequest[]; envs: Record<string, Hw>
   activity: ActivityEvent[]; warnings: string[]
 }
 
@@ -87,6 +92,9 @@ export function safeUrl(u: unknown): string | null {
   return null
 }
 
+/** The hub repo (owner/name) hosting the dashboard, with a safe default. */
+export const hubOf = (d: Data | null) => (d?.hub && /^[\w.-]+\/[\w.-]+$/.test(d.hub) ? d.hub : 'leonardochappuis/open-recomp')
+
 export const isLogin = (s: string) => /^[A-Za-z0-9-]{1,39}$/.test(s)
 
 export function ago(iso: string): string {
@@ -111,6 +119,9 @@ export const PLATFORMS: Record<string, { name: string; short: string; hue: numbe
   xone: { name: 'Xbox One', short: 'XOne', hue: 145 }, dc: { name: 'Dreamcast', short: 'DC', hue: 40 },
   saturn: { name: 'Sega Saturn', short: 'Saturn', hue: 260 },
 }
+/** Accent color for a console (dots, placeholders). */
+export const platColor = (p: string) => `oklch(0.68 0.16 ${PLATFORMS[p]?.hue ?? hueOf(p)})`
+
 export const platName = (p: string) => PLATFORMS[p]?.name ?? p.toUpperCase()
 export const platShort = (p: string) => PLATFORMS[p]?.short ?? p.toUpperCase()
 

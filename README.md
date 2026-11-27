@@ -41,9 +41,17 @@ orc init --name my-game-recomp --kb self --scope platform/x360/game/4d5307e6 \
          --repo you/my-game-recomp --coordinator you
 ```
 
-Then add the MCP server and hooks for your agent (see [AGENTS.md](AGENTS.md)).
+`orc init` also writes `AGENTS.md`/`CLAUDE.md`, `.mcp.json` and Claude Code
+hooks into the project (merging with what's there), so anyone who clones it and
+opens their agent is set up automatically. Guides your agent can follow:
+[setup](docs/agents/setup.md), [add a game](docs/agents/add-a-game.md),
+[contribute to a game](docs/agents/contribute.md).
 
 ## Games
+
+Easiest: the **Add your game** button on the dashboard (an issue form, or a
+prompt to paste into your agent). A maintainer approves it by adding the
+`approved` label; until then it shows under Unfiltered. With orc:
 
 ```bash
 orc game add --platform x360 --id 4D5307E6 --name "Game name" --status in-progress --cover-file cover.png

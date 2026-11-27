@@ -1,0 +1,54 @@
+name: game requests
+
+# When a maintainer labels an "Add a game" issue `approved`, write the catalog
+# entry (kb/games/*.toml) from the form, commit it, close the issue and
+# rebuild the dashboard. The issue body is parsed strictly as data by orc
+# built from this repo, and validated like any other catalog entry.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: game-requests
+
+jobs:
+  approve:
+    if: github.event.label.name == 'approved' && contains(github.event.issue.labels.*.name, 'orc:game-request')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p orc
+      - name: Add the game
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.issue.number }}
+          ACTOR: ${{ github.event.sender.login }}
+        run: |
+          ./target/release/orc game from-issue --repo "$GITHUB_REPOSITORY" --number "$N" --write | tee out.txt
+          ./target/release/orc validate
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kb/games
+          git commit -q -m "game: $(head -1 out.txt) (#$N, approved by @$ACTOR)"
+          git push
+          gh issue close "$N" --repo "$GITHUB_REPOSITORY" --comment "Added to the catalog. It shows on the dashboard within a few minutes."
+          gh workflow run orc-dashboard.yml --repo "$GITHUB_REPOSITORY"
+      - name: Report problems
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N: ${{ github.event.issue.number }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue comment "$N" --repo "$GITHUB_REPOSITORY" --body "Could not add this game automatically; see $RUN. Edit the issue to fix it, then remove and re-add the \`approved\` label."
+          gh issue edit "$N" --repo "$GITHUB_REPOSITORY" --remove-label approved

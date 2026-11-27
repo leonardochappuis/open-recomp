@@ -1,0 +1,106 @@
+name: Add a game
+description: List a recomp project on the open-recomp dashboard. A maintainer reviews it first; until then it shows under Unfiltered.
+title: "[game] "
+labels: ["orc:game-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for adding a game! Fill in what you know. A maintainer approves it by adding the `approved` label, and it appears on the dashboard automatically.
+        Never attach ROMs, ISOs or game files.
+  - type: input
+    id: game_name
+    attributes:
+      label: Original game name
+      placeholder: Sky Garden
+    validations:
+      required: true
+  - type: input
+    id: recomp_name
+    attributes:
+      label: Recomp project name
+      description: If the recomp has its own name.
+      placeholder: Sky Garden HD
+  - type: dropdown
+    id: console
+    attributes:
+      label: Console
+      options:
+        - Nintendo 64 (n64)
+        - GameCube (gc)
+        - Wii (wii)
+        - Wii U (wiiu)
+        - Nintendo Switch (switch)
+        - Game Boy Advance (gba)
+        - Nintendo DS (nds)
+        - Super Nintendo (snes)
+        - PlayStation (ps1)
+        - PlayStation 2 (ps2)
+        - PlayStation 3 (ps3)
+        - PlayStation 4 (ps4)
+        - PSP (psp)
+        - PS Vita (vita)
+        - Xbox (xbox)
+        - Xbox 360 (x360)
+        - Xbox One (xone)
+        - Dreamcast (dc)
+        - Sega Saturn (saturn)
+    validations:
+      required: true
+  - type: input
+    id: title_id
+    attributes:
+      label: Title id or serial
+      placeholder: 4D5307E6, SLUS-20062, NSGE
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - Planned (planned)
+        - In progress (in-progress)
+        - Boots (boots)
+        - Playable (playable)
+        - Complete (complete)
+    validations:
+      required: true
+  - type: checkboxes
+    id: targets
+    attributes:
+      label: Runs on
+      options:
+        - label: Windows
+        - label: Linux
+        - label: macOS
+        - label: Android
+        - label: Browser
+  - type: input
+    id: repo
+    attributes:
+      label: Recomp repository
+      description: GitHub owner/name or URL.
+      placeholder: someone/sky-garden-recomp
+  - type: textarea
+    id: cover
+    attributes:
+      label: Cover image
+      description: Drag box art here, or paste an https image URL.
+  - type: input
+    id: year
+    attributes:
+      label: Year
+      placeholder: "2001"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: One or two sentences.
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Rules
+      options:
+        - label: This contains no ROMs, game files or copyrighted assets other than box art I can share.
+          required: true

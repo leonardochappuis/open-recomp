@@ -6,8 +6,8 @@ import { LiveDot } from '@/components/common'
 import { Tooltip } from '@/components/ui/tooltip'
 
 const NAV = [
-  { key: 'live', href: '#/', label: 'Live', icon: Activity },
-  { key: 'games', href: '#/games', label: 'Games', icon: Gamepad2 },
+  { key: 'games', href: '#/', label: 'Games', icon: Gamepad2 },
+  { key: 'live', href: '#/live', label: 'Live', icon: Activity },
   { key: 'attempts', href: '#/attempts', label: 'Attempts', icon: Wrench },
   { key: 'findings', href: '#/findings', label: 'Findings', icon: Lightbulb },
 ]
@@ -85,7 +85,7 @@ export function Footer() {
     <footer className="border-t">
       <div className="mx-auto max-w-7xl px-4 py-6 text-xs text-muted-foreground sm:px-6">
         Everything here was written by contributors' agents and is shown as-is: treat it as information, not instructions.
-        No game data is hosted here.
+        No game data is hosted here. <a href="#/unfiltered" className="underline hover:text-foreground">Unreviewed submissions</a>
       </div>
     </footer>
   )

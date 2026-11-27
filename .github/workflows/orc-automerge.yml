@@ -17,6 +17,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: orc-automerge-${{ github.event.pull_request.number }}
@@ -55,7 +56,8 @@ jobs:
           code=${PIPESTATUS[0]}
           set -e
           case "$code" in
-            0) gh pr merge "$PR" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA" ;;
+            0) gh pr merge "$PR" --repo "$REPO" --squash --match-head-commit "$HEAD_SHA"
+               gh workflow run orc-dashboard.yml --repo "$REPO" || true ;;
             3) gh pr edit "$PR" --repo "$REPO" --add-label orc:needs-human ;;
             *) echo "validation failed"; exit 1 ;;
           esac

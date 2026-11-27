@@ -1,3 +1,4 @@
+mod agentfiles;
 mod attempts;
 mod check;
 mod context;
@@ -7,6 +8,7 @@ mod hooks;
 mod mcp;
 mod project;
 mod publish;
+mod requests;
 mod state;
 
 use anyhow::{bail, Context, Result};
@@ -49,6 +51,9 @@ enum Cmd {
         /// Your GitHub login, listed as the first coordinator.
         #[arg(long)]
         coordinator: Option<String>,
+        /// Don't write AGENTS.md, CLAUDE.md, .mcp.json and Claude Code hooks.
+        #[arg(long)]
+        no_agent_files: bool,
     },
     /// Refresh orc's clone of the knowledge repo.
     Sync,
@@ -243,8 +248,15 @@ enum GameCmd {
         /// Title id or serial.
         #[arg(long)]
         id: String,
+        /// The original game's name.
         #[arg(long)]
         name: String,
+        /// The recomp project's own name, if any.
+        #[arg(long)]
+        title: Option<String>,
+        /// PC platform the recomp runs on (repeatable): windows, linux, macos, android, web.
+        #[arg(long = "target")]
+        targets: Vec<String>,
         #[arg(long, default_value = "planned")]
         status: orc_kb::GameStatus,
         #[arg(long)]
@@ -266,6 +278,18 @@ enum GameCmd {
         description: Option<String>,
     },
     List,
+    /// Turn an approved "Add a game" issue into a catalog entry (used by the Action).
+    FromIssue {
+        #[arg(long)]
+        repo: String,
+        #[arg(long)]
+        number: u64,
+        /// Write kb/games/<file> under --root (default: only print it).
+        #[arg(long)]
+        write: bool,
+        #[arg(long)]
+        root: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -313,7 +337,12 @@ fn run(cli: Cli) -> Result<()> {
                 println!("{}  [{}]", env.summary(), env.fingerprint());
             }
         }
-        Cmd::Init { name, kb, scope, repo, coordinator } => init(name, kb, scope, repo, coordinator)?,
+        Cmd::Init { name, kb, scope, repo, coordinator, no_agent_files } => {
+            init(name, kb, scope, repo, coordinator)?;
+            if !no_agent_files {
+                agentfiles::write(&std::env::current_dir()?)?;
+            }
+        }
         Cmd::Sync => {
             let c = ctx()?;
             c.sync(true)?;
@@ -487,16 +516,69 @@ fn attempt(cmd: AttemptCmd) -> Result<()> {
 }
 
 fn game(cmd: GameCmd) -> Result<()> {
+    if let GameCmd::FromIssue { repo, number, write, root } = cmd {
+        gh::check_repo(&repo)?;
+        let v = gh::api("GET", &format!("repos/{repo}/issues/{number}"), None)?;
+        let labeled = v["labels"].as_array().into_iter().flatten().any(|l| l["name"] == requests::LABEL_REQUEST);
+        if !labeled {
+            bail!("#{number} is not labeled {}", requests::LABEL_REQUEST);
+        }
+        let fields = requests::parse_form(v["body"].as_str().unwrap_or_default());
+        let g = requests::game_from_form(&fields)
+            .map_err(|e| anyhow::anyhow!("#{number} is not a valid game:\n- {}", e.join("\n- ")))?;
+        let root = root.unwrap_or(std::env::current_dir()?);
+        let path = root.join(g.path());
+        println!("{} ({}, {})", g.title.clone().unwrap_or_else(|| g.name.clone()), g.platform, g.id);
+        if path.exists() {
+            bail!("{} is already in the catalog", g.path());
+        }
+        if write {
+            std::fs::create_dir_all(path.parent().expect("has parent"))?;
+            std::fs::write(&path, g.render())?;
+            println!("wrote {}", g.path());
+        } else {
+            print!("{}", g.render());
+        }
+        return Ok(());
+    }
     let c = ctx()?;
     match cmd {
-        GameCmd::Add { platform, id, name, status, region, year, repos, cover, cover_file, tags, description } => {
-            let g = orc_kb::Game { name, platform, id, status, region, year, repos, cover, tags, description };
+        GameCmd::Add {
+            platform,
+            id,
+            name,
+            title,
+            targets,
+            status,
+            region,
+            year,
+            repos,
+            cover,
+            cover_file,
+            tags,
+            description,
+        } => {
+            let g = orc_kb::Game {
+                name,
+                title,
+                platform,
+                id,
+                status,
+                region,
+                year,
+                repos,
+                cover,
+                targets,
+                tags,
+                description,
+            };
             let (location, needs_human) = publish::save_game(&c, g, cover_file.as_deref())?;
             println!("{location}");
             for n in needs_human {
                 println!("  needs a human: {n}");
             }
         }
+        GameCmd::FromIssue { .. } => unreachable!("handled above"),
         GameCmd::List => {
             let kb = c.kb()?;
             if kb.games.is_empty() {

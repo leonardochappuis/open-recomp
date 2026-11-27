@@ -42,6 +42,10 @@
       game pages (attempts, findings, hardware matrix, activity), attempts, findings
 - [x] Game catalog (kb/games/*.toml, `orc game add`, covers uploaded or https URL)
 - [x] Registry of other projects' knowledge repos (registry.toml)
+- [x] Games as the home page: trending chart (rank, movement), all-games grid, filters
+- [x] Add your game: issue form, agent prompt, approve-by-label Action; Unfiltered page
+- [x] Contribute dialog per game; agent guides in docs/agents/
+- [x] `orc init` writes AGENTS.md/CLAUDE.md, .mcp.json and hooks for forks
 - [ ] Faster rebuilds (prebuilt orc instead of compiling in the Action)
 - [x] Finding details rendered as Markdown (no raw HTML, https links only, no images)
 - [ ] Coordinator dashboard: needs-human queue, quarantine, rollback

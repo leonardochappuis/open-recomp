@@ -23,6 +23,16 @@ pub const LABELS: &[(&str, &str, &str)] = &[
     (LABEL_PROBLEM, "d29922", "A problem that attempts hang under"),
     (LABEL_EXPIRED, "6e7781", "Attempt whose lease ran out"),
     (LABEL_NEEDS_HUMAN, "cf222e", "Knowledge change that a maintainer has to review and merge"),
+    (
+        crate::requests::LABEL_REQUEST,
+        "a371f7",
+        "Game submitted through the Add a game form; shows under Unfiltered until approved",
+    ),
+    (
+        crate::requests::LABEL_APPROVED,
+        "1a7f37",
+        "A maintainer approved this game request; the catalog entry is added automatically",
+    ),
 ];
 
 const MARK: &str = "<!-- orc:attempt ";
