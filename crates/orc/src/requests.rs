@@ -154,6 +154,20 @@ mod tests {
     }
 
     #[test]
+    fn newer_consoles() {
+        for (label, slug) in [
+            ("Xbox Series X|S (xseries)", "xseries"),
+            ("Nintendo Switch 2 (switch2)", "switch2"),
+            ("PlayStation 5 (ps5)", "ps5"),
+            ("Nintendo 3DS (3ds)", "3ds"),
+            ("Other (say which in the description) (other)", "other"),
+        ] {
+            let body = BODY.replace("Nintendo 64 (n64)", label);
+            assert_eq!(game_from_form(&parse_form(&body)).unwrap().platform, slug, "{label}");
+        }
+    }
+
+    #[test]
     fn rejects_bad_input() {
         let body = BODY.replace("NSGE", "bad id!").replace("1998", "soon").replace("someone/sky-garden-hd.git", "x");
         let errs = game_from_form(&parse_form(&body)).unwrap_err();

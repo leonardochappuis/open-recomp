@@ -10,7 +10,7 @@ a maintainer before they appear; until then they show under "Unfiltered".
 |---|---|---|---|
 | Original game name | `game_name` | yes | e.g. "Sky Garden" |
 | Recomp project name | `recomp_name` | no | e.g. "Sky Garden HD" |
-| Console | `console` | yes | one of the options in the form (n64, gc, wii, switch, ps1, ps2, ps3, psp, xbox, x360, ...) |
+| Console | `console` | yes | one of the form's options: switch2, switch, wiiu, wii, gc, n64, snes, nes, 3ds, nds, gba, gbc, gb, ps5, ps4, ps3, ps2, ps1, vita, psp, xseries, xone, x360, xbox, dc, saturn, sega32x, segacd, genesis, sms, other |
 | Title id or serial | `title_id` | yes | e.g. `4D5307E6`, `SLUS-20062`, `NSGE` |
 | Status | `status` | yes | planned, in-progress, boots, playable, complete |
 | Runs on | `targets` | no | Windows, Linux, macOS, Android, Browser |
